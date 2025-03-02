@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-// 1) Simple CSV parsing
+// 1) Simple CSV parser
 function parseCSV(csvText) {
   const lines = csvText.trim().split("\n");
   const headers = lines[0].split(",");
@@ -17,54 +17,77 @@ function parseCSV(csvText) {
 }
 
 // 2) Naive carbon calculation
-function measureCarbon(row) {
-  const impressions = parseInt(row.impressions, 10) || 0;
-  const fileSize = parseInt(row.file_size_kb, 10) || 0;
-  // Arbitrary placeholder formula
-  const co2 = impressions * fileSize * 0.0001; 
-  return co2; 
+function measureBaseCarbon(impressions, fileSizeKB) {
+  // For example: co2 = impressions * fileSizeKB * 0.0001
+  return impressions * fileSizeKB * 0.0001;
 }
 
-// 3) Simple “AI” recommendation
-function aiRecommendation(co2_kg, row) {
-  // Example logic – if co2 is high, suggest smaller creative or fewer impressions
-  if (co2_kg > 100) {
-    return "High CO₂. Consider smaller creative or reducing impressions.";
-  } else if (co2_kg > 50) {
-    return "Moderate CO₂. Maybe optimize hosting or visuals.";
-  } else {
-    return "Low CO₂. Good job!";
+// 3) A function to call Greencheck API
+async function checkIfGreen(domain) {
+  try {
+    const response = await fetch(`https://api.thegreenwebfoundation.org/greencheck/${domain}`);
+    if (!response.ok) {
+      console.warn(`Greencheck call failed for ${domain}`, response.status);
+      return false;
+    }
+    const data = await response.json();
+    return data.green === true;
+  } catch (error) {
+    console.error("Greencheck error:", error);
+    return false;
   }
+}
+
+// 4) A function to measure row CO₂, factoring in green hosting
+async function measureRow(row) {
+  const domain = row.publisher || "";
+  const impressions = parseInt(row.impressions, 10) || 0;
+  const fileSizeKB = parseInt(row.file_size_kb, 10) || 0;
+
+  // First do naive base CO2
+  let co2 = measureBaseCarbon(impressions, fileSizeKB);
+
+  // Check if domain is green from TheGreenWebFoundation
+  const isGreen = await checkIfGreen(domain);
+  if (isGreen) {
+    // for example, reduce CO2 by 20% if domain is green
+    co2 = co2 * 0.8;
+  }
+
+  // return final co2
+  return {
+    co2_kg: co2.toFixed(3),
+    isGreen
+  };
 }
 
 export default function App() {
   const [results, setResults] = useState([]);
 
-  // Called when user uploads a CSV
-  const handleFileUpload = async (event) => {
-    if (!event.target.files?.[0]) return;
-    const file = event.target.files[0];
-    const text = await file.text(); // read the CSV file as text
+  const handleFileUpload = async (e) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    const text = await file.text(); // read the CSV
+    const rows = parseCSV(text);
 
-    // Parse CSV into objects
-    const parsedRows = parseCSV(text);
-
-    // For each row, measure co2 & generate AI recommendation
-    const finalRows = parsedRows.map((row) => {
-      const co2_val = measureCarbon(row);
-      const co2_kg = co2_val.toFixed(3);
-      const advice = aiRecommendation(co2_val, row);
-      return { ...row, co2_kg, ai_recommendation: advice };
-    });
-
+    // We'll process each row in sequence for simplicity
+    let finalRows = [];
+    for (let row of rows) {
+      const { co2_kg, isGreen } = await measureRow(row);
+      finalRows.push({
+        ...row,
+        co2_kg,
+        hosting_green: isGreen ? "Yes" : "No"
+      });
+    }
     setResults(finalRows);
   };
 
   return (
     <div style={{ padding: 20, fontFamily: "sans-serif" }}>
-      <h1 style={{ fontSize: 24, color: "#2E7D32" }}>AdVerde MVP (AI version)</h1>
+      <h1 style={{ fontSize: 24, color: "#2E7D32" }}>AdVerde MVP with Greencheck</h1>
       <p>Upload a CSV with headers like:</p>
-      <pre>publisher, file_size_kb, geo_location, impressions</pre>
+      <pre>publisher,file_size_kb,geo_location,impressions</pre>
 
       <input
         type="file"
@@ -75,7 +98,7 @@ export default function App() {
 
       {results.length > 0 && (
         <div style={{ marginTop: 20 }}>
-          <h2>Calculated CO₂ & AI Suggestions</h2>
+          <h2>Carbon Results (with GreenCheck API)</h2>
           <table border="1" cellPadding="5" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr>
