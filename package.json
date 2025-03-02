@@ -12,6 +12,5 @@
     "recharts": "^2.3.2",
     "lucide-react": "^0.265.0",
     "file-saver": "^2.0.5"
-    "next-auth": "^4.22.1", // or latest
   }
 }
