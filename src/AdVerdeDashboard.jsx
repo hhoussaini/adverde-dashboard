@@ -1,12 +1,37 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Upload, Bell, Mail, Clock, UserCheck, ShieldCheck, ListChecks, FileText, Download, Calendar, Send, PlusCircle, Trash, Filter, Eye, MailCheck, RefreshCw, Users, Clock as Schedule, BarChart3 } from "lucide-react";
+// We removed references to "@/components/ui/button" & "@/components/ui/card"
+import {
+  Upload,
+  Bell,
+  Mail,
+  Clock,
+  UserCheck,
+  ShieldCheck,
+  ListChecks,
+  FileText,
+  Download,
+  Calendar,
+  Send,
+  PlusCircle,
+  Trash,
+  Filter,
+  Eye,
+  MailCheck,
+  RefreshCw,
+  Users,
+  Clock as Schedule,
+  BarChart3
+} from "lucide-react";
+
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { saveAs } from "file-saver";
 
+// Completely remove next-auth. 
+// If you do want next-auth, you'll need a Next.js project or add it properly. 
+// For a plain React (CRA) setup, let's just remove those references.
+
 export default function AdVerdeDashboard() {
-  // Force the role to "admin" so the admin panel is always shown
+  // Force role to "admin" so the admin UI is visible
   const [role, setRole] = useState("admin");
 
   const [scheduledExports, setScheduledExports] = useState([]);
@@ -21,8 +46,8 @@ export default function AdVerdeDashboard() {
   const [testLogsSchedule, setTestLogsSchedule] = useState("weekly");
   const [testLogsRecipients, setTestLogsRecipients] = useState("test.logs@adverde.io");
 
+  // On mount, fetch data (if your endpoints exist)
   useEffect(() => {
-    // If you had calls that required an authenticated user, remove them or keep them if your server doesn't require auth
     fetchScheduledExports();
     fetchAuditLogs();
   }, []);
@@ -30,9 +55,9 @@ export default function AdVerdeDashboard() {
   const fetchScheduledExports = async () => {
     try {
       const response = await fetch(`/api/admin/scheduled-exports`);
-      const exports = await response.json();
-      setScheduledExports(exports);
-      calculateExportStats(exports);
+      const data = await response.json();
+      setScheduledExports(data);
+      calculateExportStats(data);
     } catch (error) {
       console.error("Error fetching scheduled exports:", error);
     }
@@ -43,27 +68,29 @@ export default function AdVerdeDashboard() {
       const response = await fetch(`/api/admin/audit-logs`);
       const logs = await response.json();
       setAuditLogs(logs);
-
-      // Filter out test-email logs
-      const testEmailFiltered = logs.filter(log => log.type === "test-email");
+      // Example: filter for test-email logs
+      const testEmailFiltered = logs.filter((log) => log.type === "test-email");
       setTestEmailLogs(testEmailFiltered);
     } catch (error) {
       console.error("Error fetching audit logs:", error);
     }
   };
 
-  const calculateExportStats = (exports) => {
+  const calculateExportStats = (exportsData) => {
     const stats = { daily: 0, weekly: 0, monthly: 0 };
-    exports.forEach(exp => {
+    exportsData.forEach((exp) => {
       stats[exp.frequency] += 1;
     });
     setExportStats(stats);
   };
 
+  // For the email preview
   const previewEmail = () => {
-    setEmailPreview(`Subject: ${emailSubject}\n\n${emailBody}\n\n(Attachment: Scheduled Report)`);
+    const preview = `Subject: ${emailSubject}\n\n${emailBody}\n\n(Attachment: Scheduled Report)`;
+    setEmailPreview(preview);
   };
 
+  // For test emails
   const sendTestEmail = async () => {
     if (!testEmail) {
       alert("Please enter a test email address.");
@@ -80,14 +107,14 @@ export default function AdVerdeDashboard() {
           attachment: "Scheduled Report"
         })
       });
-
+      // Add local log
       const newLog = {
         timestamp: new Date().toISOString(),
         email: testEmail,
         type: "test-email",
-        admin: "local-admin" // or your username
+        admin: "local-admin"
       };
-      setTestEmailLogs(prev => [...prev, newLog]);
+      setTestEmailLogs((prev) => [...prev, newLog]);
       alert("Test email sent successfully!");
     } catch (error) {
       console.error("Error sending test email:", error);
@@ -95,6 +122,7 @@ export default function AdVerdeDashboard() {
     }
   };
 
+  // Schedule auto-exports of test email logs
   const scheduleTestEmailLogsExport = async () => {
     try {
       await fetch("/api/admin/schedule-test-logs", {
@@ -105,19 +133,18 @@ export default function AdVerdeDashboard() {
           recipients: testLogsRecipients
         })
       });
-      alert(`Scheduled test email logs export set to ${testLogsSchedule}, recipients: ${testLogsRecipients}`);
+      alert(`Scheduled test email logs export: ${testLogsSchedule}, recipients: ${testLogsRecipients}`);
     } catch (error) {
-      console.error("Error scheduling test email logs export:", error);
+      console.error("Error scheduling logs export:", error);
       alert("Failed to schedule logs export.");
     }
   };
 
-  // Show the Admin Panel if role is "admin"
   if (role !== "admin") {
     return (
       <div className="p-8 bg-white min-h-screen">
         <h1 className="text-3xl font-bold text-[#2E7D32]">AdVerde Carbon Dashboard</h1>
-        <p className="text-gray-600">You must be an admin to view this panel.</p>
+        <p className="text-gray-600">You do not have admin privileges.</p>
       </div>
     );
   }
@@ -131,6 +158,7 @@ export default function AdVerdeDashboard() {
         <h2 className="text-xl font-bold flex items-center space-x-2">
           <BarChart3 size={20} /> <span>Export & Log Summary</span>
         </h2>
+
         {/* Export Stats Summary */}
         <div className="grid grid-cols-3 gap-4 mt-4">
           <div className="bg-white text-black p-4 rounded-lg shadow">
@@ -163,7 +191,9 @@ export default function AdVerdeDashboard() {
             value={emailBody}
             onChange={(e) => setEmailBody(e.target.value)}
           />
-          <Button onClick={previewEmail} className="mt-2 bg-gray-500 text-white">Preview Email</Button>
+          <button onClick={previewEmail} className="mt-2 bg-gray-500 text-white px-3 py-2 rounded">
+            Preview Email
+          </button>
         </div>
         {emailPreview && (
           <div className="mt-4 p-4 bg-white text-black border rounded shadow">
@@ -181,12 +211,17 @@ export default function AdVerdeDashboard() {
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
           />
-          <Button onClick={sendTestEmail} className="mt-2 bg-green-500 text-white">Send Test Email</Button>
+          <button
+            onClick={sendTestEmail}
+            className="mt-2 bg-green-500 text-white px-3 py-2 rounded"
+          >
+            Send Test Email
+          </button>
         </div>
 
         {/* Test Email Logs */}
         <h3 className="mt-6 text-lg font-bold">Test Email Logs</h3>
-        <ul className="list-disc list-inside mt-2 text-sm">
+        <ul className="list-disc list-inside mt-2 text-sm bg-white text-black p-3 rounded shadow">
           {testEmailLogs.map((log, index) => (
             <li key={index}>
               {log.timestamp} - Sent to {log.email}{" "}
@@ -198,7 +233,7 @@ export default function AdVerdeDashboard() {
         {/* Scheduled Test Email Logs Export */}
         <h3 className="mt-6 text-lg font-bold">Schedule Test Email Logs Export</h3>
         <p className="text-sm">Automatically send test email logs on a recurring basis.</p>
-        <div className="flex flex-col mt-2 space-y-2">
+        <div className="flex flex-col mt-2 space-y-2 bg-white text-black p-3 rounded shadow">
           <div>
             <label>Frequency: </label>
             <select
@@ -220,12 +255,12 @@ export default function AdVerdeDashboard() {
               onChange={(e) => setTestLogsRecipients(e.target.value)}
             />
           </div>
-          <Button
+          <button
             onClick={scheduleTestEmailLogsExport}
-            className="bg-blue-500 text-white flex items-center mt-2"
+            className="bg-blue-500 text-white flex items-center justify-center px-3 py-2 rounded"
           >
             <Schedule size={18} className="mr-2" /> Schedule Export
-          </Button>
+          </button>
         </div>
       </div>
     </div>
