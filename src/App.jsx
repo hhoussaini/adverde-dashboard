@@ -1,13 +1,10 @@
 import React, { useState } from "react";
 
-// Minimal CSV parse example:
+// 1) Simple CSV parsing
 function parseCSV(csvText) {
-  // Splits lines
   const lines = csvText.trim().split("\n");
-  // First line is header
   const headers = lines[0].split(",");
 
-  // Convert each row into an object
   const data = lines.slice(1).map(line => {
     const values = line.split(",");
     let rowObj = {};
@@ -16,56 +13,72 @@ function parseCSV(csvText) {
     });
     return rowObj;
   });
-
   return data;
 }
 
-// A simple placeholder measure function
+// 2) Naive carbon calculation
 function measureCarbon(row) {
-  // For example, if geo_location = 'US-East-1' => factor, or isGreen from hosting, etc.
-  // We'll do a naive approach: CO2 = impressions * file_size_kb * 0.0001
   const impressions = parseInt(row.impressions, 10) || 0;
   const fileSize = parseInt(row.file_size_kb, 10) || 0;
+  // Arbitrary placeholder formula
+  const co2 = impressions * fileSize * 0.0001; 
+  return co2; 
+}
 
-  // Carbon formula placeholder
-  const co2 = impressions * fileSize * 0.0001; // made-up factor
-  return co2.toFixed(3);
+// 3) Simple “AI” recommendation
+function aiRecommendation(co2_kg, row) {
+  // Example logic – if co2 is high, suggest smaller creative or fewer impressions
+  if (co2_kg > 100) {
+    return "High CO₂. Consider smaller creative or reducing impressions.";
+  } else if (co2_kg > 50) {
+    return "Moderate CO₂. Maybe optimize hosting or visuals.";
+  } else {
+    return "Low CO₂. Good job!";
+  }
 }
 
 export default function App() {
-  const [csvData, setCsvData] = useState([]);
   const [results, setResults] = useState([]);
 
-  const handleFileUpload = async (e) => {
-    if (!e.target.files?.[0]) return;
-    const file = e.target.files[0];
+  // Called when user uploads a CSV
+  const handleFileUpload = async (event) => {
+    if (!event.target.files?.[0]) return;
+    const file = event.target.files[0];
     const text = await file.text(); // read the CSV file as text
-    const parsed = parseCSV(text);
-    setCsvData(parsed);
 
-    // Now measure carbon for each row
-    const measured = parsed.map((row) => {
-      const co2_kg = measureCarbon(row);
-      return { ...row, co2_kg };
+    // Parse CSV into objects
+    const parsedRows = parseCSV(text);
+
+    // For each row, measure co2 & generate AI recommendation
+    const finalRows = parsedRows.map((row) => {
+      const co2_val = measureCarbon(row);
+      const co2_kg = co2_val.toFixed(3);
+      const advice = aiRecommendation(co2_val, row);
+      return { ...row, co2_kg, ai_recommendation: advice };
     });
-    setResults(measured);
+
+    setResults(finalRows);
   };
 
   return (
     <div style={{ padding: 20, fontFamily: "sans-serif" }}>
-      <h1 style={{ fontSize: 24, color: "#2E7D32" }}>AdVerde MVP</h1>
+      <h1 style={{ fontSize: 24, color: "#2E7D32" }}>AdVerde MVP (AI version)</h1>
       <p>Upload a CSV with headers like:</p>
-      <pre>publisher, file_size_kb, geo_location, impressions, etc.</pre>
+      <pre>publisher, file_size_kb, geo_location, impressions</pre>
 
-      <input type="file" accept=".csv" onChange={handleFileUpload} />
-      
+      <input
+        type="file"
+        accept=".csv"
+        onChange={handleFileUpload}
+        style={{ marginTop: 10 }}
+      />
+
       {results.length > 0 && (
         <div style={{ marginTop: 20 }}>
-          <h2>Calculated CO₂ Results</h2>
+          <h2>Calculated CO₂ & AI Suggestions</h2>
           <table border="1" cellPadding="5" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {/* dynamically render columns based on first row keys */}
                 {Object.keys(results[0]).map((key) => (
                   <th key={key}>{key}</th>
                 ))}
